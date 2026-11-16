@@ -757,33 +757,29 @@
             "其他": { icon: "📦", color: "#64748b" }
         };
 
-        // ⭐ 50% 碰撞距離分離 (Spidered Coordinates)：重疊或極近點向外錯開半個圖示距離
-        const STORES = (() => {
-            const groups = {};
-            RAW_STORES.forEach(s => {
-                const key = `${s.lat.toFixed(4)},${s.lng.toFixed(4)}`;
-                if (!groups[key]) groups[key] = [];
-                groups[key].push(s);
-            });
+        // ⭐ 原始真實店家資料保持 100% 精準無偏差
+        const STORES = RAW_STORES.map(s => ({
+            ...s,
+            origLat: s.lat,
+            origLng: s.lng
+        }));
 
-            const processed = [];
-            Object.values(groups).forEach(group => {
-                if (group.length === 1) {
-                    processed.push(group[0]);
-                } else {
-                    const offsetDistance = 0.00018; 
-                    group.forEach((s, idx) => {
-                        const angle = (2 * Math.PI / group.length) * idx;
-                        const copy = { ...s };
-                        copy.lat = s.lat + offsetDistance * Math.cos(angle);
-                        copy.lng = s.lng + offsetDistance * Math.sin(angle) * 1.1;
-                        copy.isDisplaced = true;
-                        processed.push(copy);
-                    });
-                }
-            });
-            return processed;
-        })();
+        // Mercator 投影像素轉換函式
+        function latLngToWorldPixel(lat, lng, zoom) {
+            const scale = 256 * Math.pow(2, zoom);
+            const x = (lng + 180) / 360 * scale;
+            const siny = Math.min(Math.max(Math.sin(lat * Math.PI / 180), -0.9999), 0.9999);
+            const y = (0.5 - Math.log((1 + siny) / (1 - siny)) / (4 * Math.PI)) * scale;
+            return { x, y };
+        }
+
+        function worldPixelToLatLng(x, y, zoom) {
+            const scale = 256 * Math.pow(2, zoom);
+            const lng = x / scale * 360 - 180;
+            const n = Math.PI - 2 * Math.PI * y / scale;
+            const lat = 180 / Math.PI * Math.atan(Math.sinh(n));
+            return { lat, lng };
+        }
 
         let map;
         let markers = [];
@@ -851,6 +847,12 @@
             });
 
             homeMarker.addListener('mouseout', hideFloatingCard);
+
+            // ⭐ 每次地圖縮放 (Zoom In/Out) 時動態重新計算碰撞
+            // 縮小時彈性錯開，放大時回歸真實物理座標！
+            map.addListener('zoom_changed', () => {
+                updateMarkerPositions();
+            });
 
             // 渲染所有店家
             renderStores();
@@ -975,16 +977,9 @@
                 </div>
             ` : '';
 
-            const collisionNotice = store.isDisplaced ? `
-                <div style="color: #fde047; font-size: 10px; margin-bottom: 4px;">
-                    📍 同址多店家 (已微幅錯開方便點選)
-                </div>
-            ` : '';
-
             return `
                 <div style="font-family: inherit; color: #f8fafc; font-size: 13px; line-height: 1.45;">
                     ${statusNotice}
-                    ${collisionNotice}
                     <div style="display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid rgba(71, 85, 105, 0.7); padding-bottom: 6px; margin-bottom: 8px; gap: 6px;">
                         <span style="font-weight: 700; font-size: 14px; ${isInactive ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #fcd34d;'}">${store.name}</span>
                         <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; ${badgeColor}">
@@ -1001,6 +996,74 @@
                     </div>
                 </div>
             `;
+        }
+
+        // ⭐ 隨當前 Zoom 動態計算碰撞分離：
+        // 1. 地圖縮小時 (Zoom 較小，圖示在畫面上重疊)：啟動物理彈性推開，確保至少露出 60%~70%
+        // 2. 地圖放大時 (Zoom >= 17 或拉近時畫面上已分開)：100% 絕對回歸真實地理座標！
+        function updateMarkerPositions() {
+            if (!map || markers.length === 0) return;
+            const zoom = map.getZoom();
+            // 圖示為 34px，當兩點在目前螢幕像素距離小於 26px 時進行推開
+            const MIN_DIST = 26.0;
+
+            const nodes = markers.map((m, idx) => {
+                const s = m.__storeData;
+                const p = latLngToWorldPixel(s.origLat, s.origLng, zoom);
+                return {
+                    marker: m,
+                    store: s,
+                    idx,
+                    origX: p.x,
+                    origY: p.y,
+                    x: p.x,
+                    y: p.y
+                };
+            });
+
+            for (let iter = 0; iter < 45; iter++) {
+                let moved = false;
+                for (let i = 0; i < nodes.length; i++) {
+                    for (let j = i + 1; j < nodes.length; j++) {
+                        const n1 = nodes[i];
+                        const n2 = nodes[j];
+                        let dx = n2.x - n1.x;
+                        let dy = n2.y - n1.y;
+                        let d = Math.hypot(dx, dy);
+                        if (d < MIN_DIST) {
+                            moved = true;
+                            if (d === 0) {
+                                const rndAngle = (2 * Math.PI / nodes.length) * (j + 1);
+                                dx = Math.cos(rndAngle);
+                                dy = Math.sin(rndAngle);
+                                d = 0.5;
+                            }
+                            const overlap = (MIN_DIST - d) / 2;
+                            const ux = dx / d;
+                            const uy = dy / d;
+                            n1.x -= ux * overlap;
+                            n1.y -= uy * overlap;
+                            n2.x += ux * overlap;
+                            n2.y += uy * overlap;
+                        }
+                    }
+                }
+                if (!moved) break;
+            }
+
+            // 更新 Marker 座標
+            nodes.forEach(n => {
+                const shiftDist = Math.hypot(n.x - n.origX, n.y - n.origY);
+                if (shiftDist > 1.0) {
+                    const dynamicCoord = worldPixelToLatLng(n.x, n.y, zoom);
+                    n.marker.setPosition(dynamicCoord);
+                    n.store.isDisplaced = true;
+                } else {
+                    // 放足夠大時，100% 回歸真實座標！
+                    n.marker.setPosition({ lat: n.store.origLat, lng: n.store.origLng });
+                    n.store.isDisplaced = false;
+                }
+            });
         }
 
         function renderStores() {
@@ -1020,7 +1083,7 @@
             bounds.extend(COMMUNITY_COORDS);
 
             filtered.forEach(store => {
-                const pos = { lat: store.lat, lng: store.lng };
+                const pos = { lat: store.origLat, lng: store.origLng };
                 bounds.extend(pos);
 
                 const marker = new google.maps.Marker({
@@ -1029,6 +1092,7 @@
                     title: store.name,
                     icon: getStoreIcon(store)
                 });
+                marker.__storeData = store;
 
                 marker.addListener('mouseover', (e) => {
                     showFloatingCard(generateInfoContent(store), e);
@@ -1051,6 +1115,7 @@
                 const listener = google.maps.event.addListener(map, "idle", function() {
                     if (map.getZoom() > 16) map.setZoom(16);
                     google.maps.event.removeListener(listener);
+                    updateMarkerPositions();
                 });
             } else {
                 map.setCenter(COMMUNITY_COORDS);
