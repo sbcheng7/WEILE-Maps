@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>唯樂之丘社區・40家特約生活地圖</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;600;700;800&display=swap');
+        body {
+            font-family: 'Noto Sans TC', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #0b0f19;
+            color: #f1f5f9;
+        }
+        #map {
+            width: 100%;
+            height: 100%;
+        }
+        /* ⭐ 智慧懸浮資訊卡 (純 CSS 浮動跟隨，完全不觸發地圖移動) */
+        #floatingCard {
+            display: none;
+            position: absolute;
+            z-index: 50;
+            pointer-events: none;
+            transition: opacity 0.15s ease-out;
+            background: rgba(15, 23, 42, 0.96);
+            border: 1px solid rgba(245, 158, 11, 0.6);
+            border-radius: 14px;
+            box-shadow: 0 16px 36px rgba(0, 0, 0, 0.75);
+            backdrop-filter: blur(12px);
+            padding: 13px 15px;
+            width: 290px;
+            box-sizing: border-box;
+        }
+        /* 唯樂蜜蜂頭像框 */
+        .bee-avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            background: #ffffff;
+            border: 2px solid #f59e0b;
+            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.4);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+        .bee-avatar img {
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
+        }
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- 頂部導航列 -->
+    <header class="h-16 bg-slate-900 border-b border-slate-800 px-5 flex items-center justify-between z-20 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bee-avatar">
+                <img src="data:image/png;base64,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" alt="唯樂蜜蜂" />
+            </div>
+            <div>
+                <h1 class="text-base font-bold bg-gradient-to-r from-amber-300 via-rose-300 to-sky-300 bg-clip-text text-transparent">
+                    唯樂之丘・40家特約生活地圖
+                </h1>
+                <p class="text-[11px] text-slate-400">最後更新日期 : 2026/11/16</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            <button onclick="resetMapView()" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs text-amber-300 border border-slate-700 transition flex items-center gap-1.5 shadow-sm">
+                <span>🎯</span> 重回唯樂之丘
+            </button>
+            <span id="storeCountBadge" class="px-3 py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-xs font-semibold text-amber-300">
+                載入中...
+            </span>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative">
+        <!-- 左側控制面板 (篩選按鈕) -->
+        <aside class="w-80 bg-slate-900/95 border-r border-slate-800 flex flex-col p-4 space-y-4 overflow-y-auto shrink-0 z-10">
+            
+            <!-- 折扣 % 階梯按鈕區 (疊加計數) -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-1">
+                        <span>🏷️</span> 折扣幅度篩選
+                    </span>
+                    <span class="text-[10px] text-slate-500">依當前分類疊加</span>
+                </div>
+                <div class="grid grid-cols-2 gap-1.5" id="discountButtonContainer">
+                    <button onclick="setDiscountFilter('all')" id="btn-disc-all"
+                            class="disc-btn col-span-2 py-2 px-3 rounded-lg text-xs font-bold text-left transition bg-amber-500 text-slate-950 shadow-md flex items-center justify-between">
+                        <span>全部優惠 (含歇業/過期)</span>
+                        <span class="text-[10px] font-bold opacity-80" id="badge-all">40</span>
+                    </button>
+                    <button onclick="setDiscountFilter('95')" id="btn-disc-95"
+                            class="disc-btn py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between">
+                        <span>95折 <span class="text-[10px] text-slate-400">(>=5%)</span></span>
+                        <span class="text-[10px] text-slate-400 font-bold" id="badge-95">0</span>
+                    </button>
+                    <button onclick="setDiscountFilter('90')" id="btn-disc-90"
+                            class="disc-btn py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between">
+                        <span>90折 <span class="text-[10px] text-slate-400">(>=10%)</span></span>
+                        <span class="text-[10px] text-slate-400 font-bold" id="badge-90">0</span>
+                    </button>
+                    <button onclick="setDiscountFilter('88')" id="btn-disc-88"
+                            class="disc-btn py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between">
+                        <span>88折 <span class="text-[10px] text-amber-400">專屬</span></span>
+                        <span class="text-[10px] text-slate-400 font-bold" id="badge-88">0</span>
+                    </button>
+                    <button onclick="setDiscountFilter('85')" id="btn-disc-85"
+                            class="disc-btn py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between">
+                        <span>85折 <span class="text-[10px] text-slate-400">(>=15%)</span></span>
+                        <span class="text-[10px] text-slate-400 font-bold" id="badge-85">0</span>
+                    </button>
+                    <button onclick="setDiscountFilter('other')" id="btn-disc-other"
+                            class="disc-btn col-span-2 py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between">
+                        <span>其他 (免掛號/贈品/招待)</span>
+                        <span class="text-[10px] text-slate-400 font-bold" id="badge-other">0</span>
+                    </button>
+                </div>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <!-- 店家分類篩選區 (疊加計數，無符合則隱藏) -->
+            <div>
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs font-bold uppercase tracking-wider text-sky-400 flex items-center gap-1">
+                        <span>📂</span> 店家分類
+                    </span>
+                    <span class="text-[10px] text-slate-500">依當前折扣疊加</span>
+                </div>
+                <div class="space-y-1.5" id="categoryContainer">
+                    <!-- 動態生成分類按鈕與疊加計數 -->
+                </div>
+            </div>
+
+            <hr class="border-slate-800" />
+
+            <!-- 圖例說明 -->
+            <div class="p-3.5 rounded-xl bg-slate-800/60 border border-slate-700/60 text-xs text-slate-300 space-y-2">
+                <div class="font-bold text-amber-300 flex items-center gap-1.5">
+                    <span>📌</span> 地圖圖示說明：
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-amber-500 inline-block shadow-sm"></span>
+                    <span><strong>彩色標記</strong>：合約有效、正常營運中</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-3.5 h-3.5 rounded-full bg-slate-500 inline-block"></span>
+                    <span><strong>灰色標記</strong>：已過期 / 停業（僅在「全部優惠」時顯現）</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-4 h-4 rounded-full bg-amber-400 flex items-center justify-center text-[10px]">🐝</span>
+                    <span><strong>唯樂蜜蜂</strong>：唯樂之丘 (我們社區)</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右側地圖容器 -->
+        <main class="flex-1 relative overflow-hidden" id="mapContainer">
+            <div id="map"></div>
+            <!-- ⭐ 浮動資訊卡 (零位移、永遠留在螢幕內) -->
+            <div id="floatingCard"></div>
+        </main>
+    </div>
+
+    <script>
+        // 唯樂之丘中心精確座標 (桃園市桃園區文中三路18號)
+        const COMMUNITY_COORDS = { lat: 24.996834, lng: 121.288802 };
+
+        // 唯樂蜜蜂 Base64 圖標
+        const BEE_ICON_URL = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAHMAAABMCAYAAABeb4ieAAAKq2lDQ1BJQ0MgUHJvZmlsZQAASImVlwdUU9kWhs+96SGhJUQ6oYYiSBEIICX00HsTlZAECCWEQFARGzI4gmNBRASUARkQUXBU6lixYBsE7IoOyKCijoMFUVF5F1iEmXnrvbfevmuv82XfffbZ96xz1voDAJnKEYlSYXkA0oRZ4hAvV3pUdAwd9wJgAQ0QkYfA4WaKWEFBfgCxufHv9uEOgKbHm6bTtf79/X81BR4/kwsAFIRwPC+Tm4bwCcRfc0XiLABQtUhcd2WWaJovI0wVIw0iPDDNibM8Ns3xM4xGz+SEhbghrAwAnsThiBMBIOkhcXo2NxGpQ3JH2FzIEwgRRn4Dp7S0dB7CyLrAEMkRITxdnxn/lzqJf6sZL63J4SRKefZbZgzvLsgUpXJW/5/b8b8tLVUytwYDcVKS2DsEGYnInv2eku4rZWF8QOAcC3gz+TOcJPEOn2NuplvMHGemhrLnmMdx95XWSQ3wm+MEgac0R5DFDptjfqZH6ByL00Ok6yaI3VhzzBHP9yBJCZfGk/hsaf2cpLDIOc4WRARIe0sJ9Z3PcZPGxZIQ6bfwhV6u8+t6SvchLfMv3y5gS+dmJYV5S/eBM98/X8iar5kZJe2Nx3f3mM8Jl+aLslyla4lSg6T5/FQvaTwzO1Q6Nws5nPNzg6R7mMzxCZpjEAGigCXy2AGQxV81fUaBW7potViQmJRFZyG3jE9nC7lmC+mW5pY2AEzf2dkj8e7ezF2EaPj5GL8AAKvDSJA8HxPsAqADuTfy0fMxxikAFJGTcq6bKxFnz8amrxPAIF3JASpQAZpAFxgCU6QzG+AAXIAH8AGBIAxEg+WAC5JAGhCDlSAXbAQFoAjsALtBOagCB8BBcAQcA23gJDgHLoFroBfcBg/BIBgBL8EY+AAmIQjCQWSIAqlAWpA+ZAJZQkzICfKA/KAQKBqKgxIhISSBcqFNUBFUDJVD1VAD9DPUAZ2DrkB90H1oCBqF3kKfYRRMgqmwBmwAL4KZMAv2hcPgZXAinAHnwPnwNrgMroEPw63wOfgafBsehF/C4yiAkkHRUNooUxQT5YYKRMWgElBi1DpUIaoUVYNqQnWiulE3UYOoV6hPaCyagqajTdEOaG90OJqLzkCvQ29Fl6MPolvRF9A30UPoMfQ3DBmjjjHB2GPYmChMImYlpgBTiqnDtGAuYm5jRjAfsFgsDcvA2mK9sdHYZOwa7FbsPmwz9iy2DzuMHcfhcCo4E5wjLhDHwWXhCnB7cYdxZ3D9uBHcR7wMXgtviffEx+CF+Dx8Kf4Q/jS+H/8MP0mQJ+gT7AmBBB5hNWE7oZbQSbhBGCFMEhWIDKIjMYyYTNxILCM2ES8SB4jvZGRkdGTsZIJlBDIbZMpkjspclhmS+URSJBmT3EixJAlpG6medJZ0n/SOTCYbkF3IMeQs8jZyA/k8+TH5oyxF1kyWLcuTXS9bIdsq2y/7Wo4gpy/HklsulyNXKndc7obcK3mCvIG8mzxHfp18hXyH/F35cQWKgoVCoEKawlaFQwpXFJ4r4hQNFD0UeYr5igcUzysOU1AUXYobhUvZRKmlXKSMULFUBpVNTaYWUY9Qe6hjSopKi5UilFYpVSidUhqkoWgGNDYtlbaddox2h/Z5gcYC1gL+gi0Lmhb0L5hQVlN2UeYrFyo3K99W/qxCV/FQSVHZqdKm8kgVrWqsGqy6UnW/6kXVV2pUNQc1rlqh2jG1B+qwurF6iPoa9QPq19XHNTQ1vDREGns1zmu80qRpumgma5ZontYc1aJoOWkJtEq0zmi9oCvRWfRUehn9An1MW13bW1uiXa3doz2pw9AJ18nTadZ5pEvUZeom6JbodumO6Wnp+evl6jXqPdAn6DP1k/T36HfrTxgwDCINNhu0GTxnKDPYjBxGI2PAkGzobJhhWGN4ywhrxDRKMdpn1GsMG1sbJxlXGN8wgU1sTAQm+0z6FmIW2i0ULqxZeNeUZMoyzTZtNB0yo5n5meWZtZm9XqS3KGbRzkXdi76ZW5unmteaP7RQtPCxyLPotHhraWzJtaywvGVFtvK0Wm/VbvVmscli/uL9i+9ZU6z9rTdbd1l/tbG1Eds02Yza6tnG2Vba3mVSmUHMrczLdhg7V7v1diftPtnb2GfZH7P/08HUIcXhkMPzJYwl/CW1S4YddRw5jtWOg050pzinH50GnbWdOc41zk9cdF14LnUuz1hGrGTWYdZrV3NXsWuL64Sbvdtat7PuKHcv90L3Hg9Fj3CPco/HnjqeiZ6NnmNe1l5rvM56Y7x9vXd632VrsLnsBvaYj63PWp8LviTfUN9y3yd+xn5iv05/2N/Hf5f/QIB+gDCgLRAEsgN3BT4KYgRlBP0SjA0OCq4IfhpiEZIb0h1KCV0Reij0Q5hr2Pawh+GG4ZLwrgi5iNiIhoiJSPfI4sjBqEVRa6OuRatGC6LbY3AxETF1MeNLPZbuXjoSax1bEHtnGWPZqmVXlqsuT11+aoXcCs6K43GYuMi4Q3FfOIGcGs54PDu+Mn6M68bdw33Jc+GV8Eb5jvxi/rMEx4TihOeJjom7EkeTnJNKk14J3ATlgjfJ3slVyRMpgSn1KVOpkanNafi0uLQOoaIwRXghXTN9VXqfyERUIBrMsM/YnTEm9hXXZUKZyzLbs6iIOLouMZR8JxnKdsquyP64MmLl8VUKq4Srrq82Xr1l9bMcz5yf1qDXcNd05WrnbswdWstaW70OWhe/rmu97vr89SMbvDYc3EjcmLLx1zzzvOK895siN3Xma+RvyB/+zuu7xgLZAnHB3c0Om6u+R38v+L5ni9WWvVu+FfIKrxaZF5UWfdnK3Xr1B4sfyn6Y2pawrWe7zfb9O7A7hDvu7HTeebBYoTineHiX/67WEnpJYcn73St2XyldXFq1h7hHsmewzK+sfa/e3h17v5Qnld+ucK1orlSv3FI5sY+3r3+/y/6mKo2qoqrPPwp+vFftVd1aY1BTegB7IPvA09qI2u6fmD811KnWFdV9rRfWDx4MOXihwbah4ZD6oe2NcKOkcfRw7OHeI+5H2ptMm6qbac1FR8FRydEXP8f9fOeY77Gu48zjTSf0T1S2UFoKW6HW1a1jbUltg+3R7X0dPh1dnQ6dLb+Y/VJ/UvtkxSmlU9tPE0/nn546k3Nm/Kzo7KtzieeGu1Z0PTwfdf7WheALPRd9L16+5HnpfDer+8xlx8snr9hf6bjKvNp2zeZa63Xr6y2/Wv/a0mPT03rD9kZ7r11vZ9+SvtP9zv3nbrrfvHSLfeva7YDbfXfC79y7G3t38B7v3vP7qfffPMh+MPlwwwBmoPCR/KPSx+qPa34z+q150Gbw1JD70PUnoU8eDnOHX/6e+fuXkfyn5Kelz7SeNTy3fH5y1HO098XSFyMvRS8nXxX8ofBH5WvD1yf+dPnz+ljU2Mgb8Zupt1vfqbyrf7/4fdd40PjjD2kfJicKP6p8PPiJ+an7c+TnZ5Mrv+C+lH01+tr5zffbwFTa1JSII+bMSAEU4nBCAgBv6wEgRwNA6UXkytJZTT1j0Oz/gBkC/4lndfeMIcql3gUgYgeAaTlVeRYAA8TlEQ9C4mEuALaykvqc/p3R6jPaRACAzgiiHKCeozEbwD9sVsf/pe9/jkBa9W/jvwBt0AXRtwEfSAAAAFxlWElmTU0AKgAAAAgABAEGAAMAAAABAAIAAAESAAMAAAABAAEAAAEoAAMAAAABAAIAAIdpAAQAAAABAAAAPgAAAAAAAqACAAQAAAABAAAAc6ADAAQAAAABAAAATAAAAAA7p/AbAAACtWlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iWE1QIENvcmUgNi4wLjAiPgogICA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPgogICAgICA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIgogICAgICAgICAgICB4bWxuczp0aWZmPSJodHRwOi8vbnMuYWRvYmUuY29tL3RpZmYvMS4wLyIKICAgICAgICAgICAgeG1sbnM6ZXhpZj0iaHR0cDovL25zLmFkb2JlLmNvbS9leGlmLzEuMC8iPgogICAgICAgICA8dGlmZjpDb21wcmVzc2lvbj4xPC90aWZmOkNvbXByZXNzaW9uPgogICAgICAgICA8dGlmZjpSZXNvbHV0aW9uVW5pdD4yPC90aWZmOlJlc29sdXRpb25Vbml0PgogICAgICAgICA8dGlmZjpPcmllbnRhdGlvbj4xPC90aWZmOk9yaWVudGF0aW9uPgogICAgICAgICA8dGlmZjpQaG90b21ldHJpY0ludGVycHJldGF0aW9uPjI8L3RpZmY6UGhvdG9tZXRyaWNJbnRlcnByZXRhdGlvbj4KICAgICAgICAgPGV4aWY6UGl4ZWxYRGltZW5zaW9uPjExNTwvZXhpZjpQaXhlbFhEaW1lbnNpb24+CiAgICAgICAgIDxleGlmOlBpeGVsWURpbWVuc2lvbj43NjwvZXhpZjpQaXhlbFlEaW1lbnNpb24+CiAgICAgIDwvcmRmOkRlc2NyaXB0aW9uPgogICA8L3JkZjpSREY+CjwveDp4bXBtZXRhPgr7jMTkAAAtvUlEQVR4Ae2dCaxmZ3nfn2+92yx3xrN5bI/xhldsAzbFciOWQgJVSQINTUpVUqGqSqkoTUuTRlGrpLRSSqMUpW0kklCVpi1JG2jktBSiGIfFYLM4GO/LYOzxrJ717t/e3///vOebOwbsez0DNmrOd79z3uXZn/d5t3POd2vD4WgU42MUtZoytVApZz4qKOesjBqVWSJQAEc18PKq/Ih8op2JJ8qipaMGzKjCcUmiGI988q+gz6Tz3fkPwalbDmskWUlYesstvqmL2CExkhSZVcChWuujOqpOQ6+mI5DvoX/BkP6FvSih52lKYqFD/HWYTyadT40Lf8pVL1DzNJ3vxX8YTSGLlhWLuq8SII/TQkk6EdRh4UgnbYtLaXU1BLCFSlFEfnON8kNSEpBLZRZdR/Cv5BGsIASeCj0f/8QdS07C6TP4w2M1f9HmU8mR/MV3TOU0fxefdupoNIy6aVd6c5WgIiZ8NWhdz+CvYsqL/hhJwAlunuhAdbGcaQg86T6//jjT2Da+6UqOlIgqVJU8Y/KCpXYVjBhRalFqcE7DGwA9ioLGTzjj1kVXWDpeevwtk0VbpX9RUr2JdAg3vDT0S0Z/WlhxB/I5VRkZRSwlJ1+tAcmsp1Ya5eF6galNqTwLslWRI5uuJA0PQ6gMBuqeq7q/4C9LyHY6sIvNyMnX57d/0yDFnWnUQsQEK9LpILXK011JMnWXQLVx1WorQYRSoi+jV07jwLPZspUpZX/BP/1VzsVsMtbYnko/n/2blcFL30kWd1QRqmS6wETlBDmkcsYZExgKq8aQNMmPEezydJ49moQkKqzyKLBny9+chlCW7HyriUOlR/L7/vG3hTKkfuD6M2ba5z6jO0da18oXQ6edq4yspFpch9CVkYQpOHk9jZh1pkm5HFu1M8P4lAh2wLg2+ayPf6HDZaDPaIVvH57NaEWbbzOG8K8z2/UhGc8p/0I2xXgR9E/+TXnA5nM0ZqHzpTuUY1JGl7qbLQ0PYMpWRzJ5w6r5C9/kilON7hM0VJMwumZVxrVQnF8XfzWkWiwPF2IxjjNZ7PGFCn/NUSsma5tiur7RDc0N8Zzzrxrqi6V/8m/KCGODYsDshqQ3glFVRV+a2maWvR1HjjbZrMKz98D0tcAqXCmwmmZloja0fW6XF4dWdEx/7fzVcDrDxZiLIzGo9WJUJwJZOtRw6QoR2h32ojYYxHRzK4JbiJQJ0bLJnR3/F1v/ij8TIGmUCiqtlFSsnCqXaImhQ2k5poLO0nGNu9nVNFTjyAdQWJ4Iybkc2VBOG1HUV+Ouhb8JcRrgrPnhMWj2okFX2h8O6VZzMafZ8qDZjVPD49EYTsQkETrSQk8yIYql+SHV/9n2z3UvlpOxSxBhFFREwXRiGrkyrgkoQ70uNgYG9ZpSNGQY/uQsu8oJUqtxVCYg8yBJ3QvhH8PkTuxFv9aFX43IlCMHlouUZRDrHvWLo/kY4ujaUGPn2fN/sfV/Nv+m13q2J6aQcWUfOcJ2ysy4jAo7SCACkE+4CCqjTlcVylBZrzoDiLYTqpZzVaEqlVf46+RfBxM6vehwwUnwGNiBEQ1VEaXJht2aaESnNk+3O834udl4Z83fgiepF0X/Z/HX4JJOsUE5ydC6rCq3Y7B+budhcBHhJIeksZJENbERrsfiMWkh6KjcWeVVNgZKB6+ZP5g0HBmxx+xVzpQs7M4yd21Ec9hGBpwJKzUYXXv1PhOkk0AOxJhyYbxQ/uJtbNOSRj9Y/b+Tv9q2xLBzdJV6OumawunKV84DmPMZSlBgX6tGTrajbTxTMh3hFIrUpxBuDKRfOH/xw4W1fvRHHegnLfGiGHe2uCbf3GWSS2vRJ467wxXDSwbxH42yW064FNWYUtj1L0X9LZrUHtufCRC5orSqZQid8uKzsQwiT6V+xlEyHW0QMsJVOg1qhyVi1lFuyjaiGoVNn0SMvD7+YjZiDByx1+s0F/YLKOXEbFblriFCk5OcP8CdKzFJdyvdJV6t3hAGaVuDggov6VojJ01cWcucOCSV0DEG/8Ho/2z+uYqWjHZUpXIaRNGYiuVVjpbCY6GNl4KTtMGkU9ISmLTj6kpydqIySUORUBGTAxy1Nutp/pqM2cRcvxt/T9Ygk+IDA3k62ex0hSMphEj5gEpRG4xYvlgM6umbnnrq2/HIQ980jDEMDqyJPjd/6VDIm5f0Xbv+guZAlnNh/xwzHSESiq8kk6aV03SVOXWRAfRVno+7YYMrTcJ1MliiK2EnFXzXCEb8xrBp3D7R0hsu0w3m7s1w2DcR8xUhERWO8cSfQ6sP+DpHWp1lb4CjisxiUvMoKmSNpxJItCQJWKxHl5cW4iMf+tX4xtfupsoEDSu6AvdV0IOcGZ/mDw0pYXJKk7BQoj1Go8iWMlvXCEb8jWrIzIN1tvZvqvFZMQllNSgwQzK+IoxaNJUSJjcZEoeKLC+K6KLDDUJ0JbGpClNJmV3fGkbX6LXMDBMnasxjcZ/3yTF/jW6PrrFRb8UU3eFkfQYMuYIZq2mKCmmiajhImlqG9Hps5dEIGvVeNOvadgZKDpKSZi/5rYh6YYVwnDp1Ku79H/85/vbPvR+4hpcudW86JBx9tdFrDYB1WEnxVz1XXSqapHU8n/5AQCed7CS03MYS29UirzrDVXwMV3T5LvxPL01EyHAVYTEzLU6qQ/zCQIwtCgWyU7bQTBuWettc+CZbIUp5jD5ailOj49Gty4llZilm5p8z0iGGjVqHRcdSTDFhmWFLrhUTdpD1wLm+Mi4OcGiPHR6F6qiG0+HRx6lddaeU1hsaTSSoyilpsE9beB3Y92T83d/8WFx57fXAqhzN0AttioFpEDj++NGDMT2zKWZmNkBGukqX9elvHFNGHHOTTKm25Ez9oUnG/AUlOVW5BvvT7CS4KApdVHSGQlLkYrf5CknqgbYhhKN8gVVS9RzjIsOpwKUG72PQU+zWdOoLMayzSMCqGps0RdFaUF9xbLD417xmQPc21z8WhzsHYqE3ZwOKkCLTV5gN1SCgKzb4ki8NgWo51R8cPRzK2UBouQJNtcIBZcePHoobb76FbJ0oH5i3DSm7aIMBuMW5E/Ev3/+zse/bT0iRjHbRWqf+RpZxJAZfJ8THtM7e/rk3a6EkHAk50VKaFaniPFWLf4GtoHRN763GEly2cF0TVtaleyXSOvVlko2iUPIZ0O0GXaO6OAXPoM9dD1AEhEn5rsSR3v7YGFtia2sbLsdhwEncETs6slGdT7/bpevuxURjAuf0PY5q4tOkmxww1aXzBVZ6wqfPhnx/GJOTk9ICUUXHrkQGEc+G/Mef/HicOno8tmyZTTjOrtZVJWKef1VJ4hYagrEdyYt1HsU+FWKBPRv7510TCwMXMTNxFJYucFWVUtXEKAVTUUkZx6jgCK6SNhuBt0jVI6oOtD5j46AYTJSpiV6fsQ7DNwjFOg4dEGk8aEZ0YnCbS5EKJFF8kigd9kexbWo7ZXqESV1oHt1ujzFwHjqdmN20Obr9jvdpNd4NG9wO4zsEp6Yv4ntZA99Ws10ooL8il497JPh9+fO3x5N798av/tZ/jZ27LzK9JpHvGbI0WrP+xZ62tZgX+yGIhynZzbS4uqzAk1VqLfbPJw0k/FidZLI6IlWVTs06KVsKzLE0AQuhKtdZOJKy9VhwgQ8Zsjjb6TabJ0OavcrAmrDgRuP05HiMrYjJDlCTETn0mah3arG9vdPOb9Ra1AuWPVrNZonoXqcXiysd9mRzVtxqtWNygo32xpQnToSoBLO4EFVGJnOJ9KkjzJ2fuz1OHj8a/+Sf/+uYmJzy5KhJz+GZaxpkzfqbNjSlo5jqYqfpSu5c2N9PGrgjFINiYE8ACnVHWnGGG5WZCzaFyATI5E/7LJ2k1mRHUycXSSFFpXFGat3qQOvRrrXzVhUL+jpdpmJjgEc0po2IWhGvE101RRd4mqSc7B2NaRwz09zMPUvwh2yiSwbBIYi66l6ZBNXJd+m2B5okTVDfzGj2WA3NvNtQxAK2QUR+42t3xfFjz8Rb3/bXo9kkojWeQluHVF+v/m42Ut34oqB02uJc2R890uB2JLRl8PSMuCV3CZ5rtyyrFFG1wx+cqou1r0SDSncfwEjmupHSoSry4bJhtHHKRJ2IIYzVnuxEhRcTFd3lUL7P+DboMR521XUOuH+5HIeXDnoDYKI2ybIkNwKaTRoJzugMWK/aWNKGBgKvTmcl+iu9aNGV69BEqNdlX1cqOy9H1pnofCse+OY34q/82F+LZouo10RIyxUDoZfhpd/a9Xe3DZ7jRUYyrcSXVc6F/XNpIuFkfF+Tj7hWEbq6OGspsSKJp+5CRyqnRBFaNFUBLU/jYZCPbpQWDl4fg2J71pLTjsb+oOPxUmvInrtNdbAVbU++kzhd7/LgaAx7/Th/88WO6JX+vCNYj47MddhQV2Qz/i57MkXfgFOmYwZn5hipJcuIcJYDdTTIL87Pxedv/1S84S0/yVJkg6O5QUSOG7MhX7j+srH00SHHZhCQOQf2byrE5YTkoBaShFd5xPXu8wVr0HK290Adt4LitNU0VVfghNxkfGvQlfY0M6JOS5L+sBsTTEpU3gVGxu0y9vXpYjWXVZDqOlDfWdJa4A+I1oXhXEy3NsdUfVMc6x13w+j1iWC+ns3SWOhgmShrHluLyeYUET+Klf5idBlT61igD6znzDSQL95xe9x4062x+4ILo09PoO59vK4E6nTfkrrKbmvTX/AyMyfZxAFQrEqR6LhWVztEwM6s2f6eAJlOcYj5iK4Y6KQIVZJD/FVvochYnhQvGVNh8QwIQpEnu1u8AK36iDFK4x6wuvco4iPGyg5LhKZnmlo34oCuJi5EJY5VhHY7XXe3GsP1rRO5bgpcD8/vj92zF+MkGkF/yc7rskTRiIwIUaNrHbFtt3D0WOxbeSqWWg/EwsICM2tmv4f2x58vHYuZ83ZHe3o6jj71SLziumtiaeFUTG/gvieHxksJKn6axb4w/bFNZTtRw5A2uSlzcgbawPBn2/kkfZXnsFkrGmSUF3RegGM9VcKNIpdSDQEJfLpAKEKqYFZzFKtEHLMtuBoHCtaYsWadJ4ZHozNi04BI67Pm0Jq/N1hmctN2pC50T8UKY6O6yR7Rsbg0Dx3GPcZDj71iCW3v1hChcvjumT3ArsTh5aepazM+4qz5Y3H8MfKHjkX71GJ0FuYQlbUlj5loPSsfjViPLi8twm9eU+mY3XlptKY3xNSOPXHhFa+Iy66+PrbvvljGcCNzFMIbgTik6Fr1N4Ibg3BkF/+JlslkXlRfsP3xpf1mo0OvMr8JFoYphtmMW05iJbw8lX2/rglnetbTJwuohbicocc3TgyPAIgzqe7SXcqjA7rVidoEEdiLueWTscTkRJMWRUa72WIWxdgmBnz1cYQSzfg5NrdmYwtrz2+ffCpag0Oxu3ZvHLp3b3zzT3vRnmQzAacvsj5NGlog5fq2ox6g3AKT5CPWpiM5m65/NOzExvOvjKtvfn3c9CNvjq07d9MQ8h0Tqwm8G/Aa9U/bCAfp0TsbBjxNJ213VvZHOMs1bg1mIgbZZVpBMZPAyiCKDeqoy6SKLBISGk6SjvFTcCF75kudOthjLC1ODU94jBtgZE2COupOqZsctjyxObFwnEkON5KpaymSEFWNyNThPyJyZRUtJerMaPdsuTgai/fE9MrvxQy07/jUxti7d2PUJ+oxtwhtJkupLVGGU+CKUzUmZ8OQzOqatbtUp8dowGPQXY6VxVNx3sUvj594z/vjqutebVyUcc9gB0kgKfi8+gNiO4BAomgiZMihjwxMlbrPrDVhUU67ClAASSTtUHCEwYTVJIxsLEDccgqe8UVCSKWmao0J72LoJ2Nk4pAoOoAsjLNAxlIg1fz44/6lJ5gIrbD0a9P58iQPs07fTSEihyv9aLenXb5AlGrbrc6aUPRlfC1X1A0zTrC7w6PO3Cl5+cTjsWv0OYx8LBYXNsYnfr8Vhw8R6ewszS+ztGEsrrS1U6FleSmUvK4joQ0DF9CANDZrNttbWmKnqh9/472/FLe84a3Ayu2psy5r1V8OFFbap2pEyheeri/2K+QBX5P9a6vfzzSuvZat5AymEiA9ZQdlqypc3CJlKK0TEUSS2uoJ5XO2Bip0qKQeS8woj6wcwNhdwGux0uvQ5a5El/FyaXmJ21itmG7POJo0Hna4e9Kh3hvlbhVaUzZiM2PwJa0vxfbGPXSPeti5EY/vHcYf/H47lrtsD9KE+nZYJTVXZE6DpkQSWjKkztmcnbaNhzHF/u1T+w5G7cQ98cu//aW48pW3OEK1hMqIXI/+cg483GjEJQ+nzsL+GoRQQGohDOdU8HSq+M/OUZTl2tNq2nGV+oo3YSe+hE0B7VQyymcZuCxBZLzp5kzsmDyfTk3bcULQJrsAh+yXMhZynV/R2LkQDfIz7Y0x1dhAubYDiU6+u/oPxTXDT8au5v1sE25lzGP9eaoTX/z8MA6dYOcHynqOVhHMTZo8tFXkQzzV2bIcYldIOcnh/kNySBS621a7FcfYaK+zvXjFjW+J//Nf/mMc3PctT6K0djXguvRP/nk+d/ZHD0i6RarzS7myy1C5okzM0t1mm8UACppy16c6atlqpa5SLXn34quiwA6l2xMtOW66viF2tHdHY6B1o5YjGosm2EKbSGMBM2AdeGrpZJycP2nSU62NNIB+XNr/alzR+aOYYa920GPTgSVInfXp8aP12PtkPSYYK9VopI+aqkWTx6SX5dMNcB7BZMa8wGx3ut2mwbQ92Wqz89NqEfmsU48cfCYW5k7GJbt3xvTUTBx+6uG48/bPQAEtWJvqSHrr0T9xbKxzZP+ynQdhySHh/BGLVNgp6mQUQXgGJulV7zJSVb1AKFdBYrsAhbnKsXK265VNXtqfnW5uiJ3tC2K6pi09IoWxSpFpQ2EsP1GAQ/VkwsKAsWtpf1y6/KexZ+lPog2vwaAdgwXWlctan0Y8+Ag3k+eZxnATWhsONW1QWCPx50AcjYU9JkTaBmwwFs/PzceBp56OztxC1JbZ9ltcjPkTJ+OZA4dislWPqy+/JCanp2J5mbssG3fF1z93Wzz+wDehrUYJfdnC6uq6Nv0F52FJIiGabHY29s+7JgiSZs6zCOch0jokpZxRHOjCrJHY+UfeDkp4+7kQyuhN9yK9wMpBohhDXeiF9Uvi8OKBONHl5jXrQTo/by50iLbgNlWT5cLTD+2Lrc/cHtuv/jbV3PVnZ7CuiY27Tq1LGzgyN8vFxKzkS6eQAX6a0MwvLMUzRw5TOorzzz8/Lrr4wljGgcrrDTINhTOMkzu2sLs0w94vE7BlnD8YgN9qxtyhg/GFP7ktLnzZpTE5s5HxExvS46RVoCLGa9Df8p0j+2tLA65yhBQWfxKyMeUqknJmSLpygq6ZJjHGF5xdiyJJLO/5CVgNgTKRFoo+VkAF4qPxKjfcd2+8JPbMXBpbmtsZwAZMirQLRBd84nDc/8dfjIf/2yfigqmjbIBjQD55qyTHuz60mo1h3HRNPTZOs6VHG3CvIM/A38NA0WmBDYTtO3bEBWzbwZxZdA+nTMWGLVti0+yW2Dy7NWZnZ6PenohFZsIrXaZRbANqFjtCrg3sGN3/5U/H4YMHoCgS6shfmP42DCKazlnYn1mGSKEN56SndBrcxaopDnCFmdkddrhS1WEHp3/GdaYpfCorDmLkNuzmq1LRkENGzGBrsWX6vNg0uTlmJ7bF4RMPR/PkHXH/V++M+z81H3su424/y5CoLRG32cXl1p4iNGlNTnGjm+hLnaBtn2uiUzRk0rJ9O08raBNCYx5yKLK6LHX6bAfqJpxApY8wtNNk6ckQmLQxxnaWQ/MnDsYTjz0YF192eTYUR6d0Fa5wrKWUXYP+lXVkC6EIyUnLMbbzc9gf/QCDeY5/FSGIgGTyUkRpCchXigs+D+BdyMVqJ8tcW6pMR1FKpO08YJJh4q7iLxpq+brlpCfzZnHatmOfjcn9H4+TB+di487NsbQyjMNHcSbLIG8W4HzLJlbQr6KPYObQnirFkt0pZQSm9aNmzkBovWq5TsMoxtQza2Yr52mXSmO7P0Rln6+2BCdnL4ivf/4zsTDP3RpPhM5OfwuXIto2tinKrdX+L6n3M9OEeIFneE4evCNOPf4forFyb8wv7or9z0yw9JAR+7F5s7bU0nCeS8pTqzym1YIfwZQh5D3HJKlVHpX/HHmlMboxk5aDZVQvwUjlVY0kI1jVoqpNjAme1nvyobviyKGnY8Om2SKCjJ80dDYTCizHWE6o6I/v6iBQqyztyjysUsHNGBf3PNzwUUA6yNnC8yJhPJ5JCX+TkRmCq9bOnzj7ZEIFTiWWTHnxgqoM4DEXQQqKaYhezmKBoyJVlJENpWqObhx6+H/FkbveHDOjp7lzsSceeaLO4xs8kTBBLY+LdJfpMpmpasKRgumqWGKvt0tka5wlW2PNmV2mKMNDYErJCFxVoBod0tHGU9q1gsl659FpFbTTGopHjKMHntgLVqWzrlV6HfpbvOQp2SAhkvqzbGuxv4YDY4ptepmsElRkl5VKmLgI8zUnKV+YqcjGEA0R5E+GsfJOkBJwhaMyAZmH6IkCDqL1H3zq7jhy70/Heee9LjZs2BArzGIeepT1HssHofWYtXa6TJnUjyqMRIrDshd5Nm2qMYHp0iWzTqFL9cohoZIVNLIBS95VLqIBpGiiqyWR4944FlF8TCcT6p6b9Yk4+czBop/KpVfSWbv+ciIfyW9c8S+2hLs/RQDzX23LIo/szm1FkxkbO2exogiUkMxEhIWVbdWl1BW5VWF8G4bKnM2SsGCuTuEgKjKCM21oJH8RUBfH1P/YV+L883Z6wa87F8uLdcakOrNXnAJ8g5vJT+zjzss8u0SUaWcHTEsmeRSfk2wWXLJH60/WkXSH5ulz8pfVFD0w9ZJGFlBO8x5NkrSR4DHQhVYjaVQK61r0rzMRWuTeZ7VZL7Lr11+BASJ0z8b+GghSWqkm4UtLtXqygo5i/DRAcSyMLXhCpKncrGUwGUsKV6THhNJohi6IBiqAENyyqRuTU/SneriLrhSr+ut1nFDYCpQTW3rkQ/IWR1bM1KvoAfZXX9uKzZt4c4XHL11nzpIM2RR1Mpy/sALeLRu5aCueJdMXGM+Sy/nk5HQ1OuvnHM2I6F1cXDJdi1M1rHXpD3GOs7W/TCUy0sZXC8RJ12xhycSDLCA2R6kXpvSTr5UQCZMRVBaajnAKRRsthRaMzSNkDpCRpjUzGxOtFT8zq1cN5uYGbL5Ti8GzV2WXh4jTTNNjk2VKdDlEz9qK28aZQVxxWT+WOtoi9IpUUklKMYOXPVhyVsDC64FpbcrnHm0qpHWw4AUl/exay0704zw9niJ1RVkyKLU+/YUsPDU1X3xdr/29Z2Hj+gRN003JUnmJlgycElN9ga/K3QizKIXgnHRKoSBLS83uRJTg4T9SXLODpKUPN4O7MjZamyjURoBgMam72ROn2IFhEkQI4WBoyy+qhKlFY1LCQwlxyYUYuzekMVDOHqs2GCS1TabF/5h/ulhjoLpLMdNHLV33NPWVxP6SVopqf4fQneDBLzFOeom9bv3TCGdlf5mgyIiIEijNzJm0lEAqldlQUr6SWBoZhVrKMysNSRsvlVJe9jYdytMUIiQ41XI4oRptn2/l4WXeKTFxqho8gZDgSQj+LA3ZfEeuMX9wSTfVNbNBqYe02HGLl+2ux4U7NG6KBrNccAFxhMtp+BuHaTJVBOEiDdKRbEnQQvSanD5aNhkKGoIZNyC2HWe3bKcxJZSq1q9/hXN29seZspSIyCl85RlZibSl1tV1krJ8lZeChhO40sBZW9FKdCUqU6TDC4z4iUVCKiEMo9cmdvDkHHuhHS0v9OQc0UpPSX+GOREXDyjIBtxlMU3xFqZIU63OsMFtK3Heub0er3klD3lxN6V6qFqvPtCPAi8n4iw5Uvyhox0lYWonqUVZU3KyaK1sI8CUWdSTRoP6DRtnkUUlJuRzMZspWkKqjCMGgjVbwSedisfZ2D+XJljFPjRpuIihDl9RsDIYjKvZlgW3QIAhOSD2v2Sz8AXXwmZJqZcCHGiTziBt2CyvT22LQetqHvHQr2zV4sTJEXujOTb1eFaojfGPHavFk08TgVqeWHYzlXRyNxMgMKlSV3vVZaPYvZ2udoVREEeq0Skq1T3WHPLiyxenaJIlIztSUUj3TEVTEapryZFKXcWrTcPZzB6u+uTTDkx7pGKib4s8h/7AA5aSQN32MJpPa7V/Lk3UUkRBHlFKCpN3jpOFlGJiqEIO11JgJ5JTndKuLoIJTgJWZwslGH+hR0LRbUUkA8ATE+ykTLyBWegBbirXY+eORmzfBgKGlxN62t5hzXnfI804epzZJ91p1UOIjuSSNr63Dc09uxvx5tePYqLJ035ypvpZeQEoUvIhz+uCQ0bLHG2i6/GQjpyrLgBa7p4lM4gq0fugevpeLm61azG7bSel1BuGxLr1l8Q2ipFfqP2Zo6OAuHMVSXkrCadEGYkSHmY6sHgmhaO8hCCtpM+rigpKVpRawZOU45wo/PPxC/Zkm5tiatdbuIvxJONiPTZvHMaWjXoZSHdEWDBgzXZ7FA8+XI9vHcQr7ltFTHJZE67qMkesN4HF2Tdf14y3vonudrnDJgQv4XIzWg936SFrdb96EkGYPuNU8cj3OaUA9tDGuh46w4n+IvwUg3KN/dmprRfx1N4uKQOFPMYmWYf+58L+bHHSKlE+/QF3JYoQKVw6T2mrZhDKBMbXMJZeESEIl1ApmjQCrjIuf+AoXxBdLxqqE2xhwGXTtstiOPG66K0s+Cb1xs16LJIIAk5vYXlso1vbv5/b1cvar1WMaLmvkEv+kqROd9tkvt6eqMXNNzB+3sCNZZ43kiNXeA1isdOJZXaYOkRjl4E5f6ZN8vFHlCKV6elBMz/ZJ6fz7ZNfZtvwyQf+LK77y2+LjZu2uCFIgoq/FF63/mac/CFUNFm7/TMywa8mMVUkipJF04mUncBVKqa2uqTwKnXEqg+q6imTj90vcbHzfTV0FggWL6pO/HWoK51kP7Y5+zNx4vhXmew0iDCMyO6QnCVYE+bln+UVHvngSUwtP3pMlPrc4lC1exGR5qsNeUY/IjziXT+xId54izYGiCiiW6tJvQLYZSGrHlXRqDe1/cYXjPTi7sLiCt9uzPN03tzichw7tRDH5lbi4IlT0Z/cFjfc/Fp6E7Yawct1ofTQd/36u7GrcUsL/kxFJ1Jrsb+2qjmkcLpJKio1JiSApO2ahFYBEKrTRa1QX1MrwFmhrVEAkqJQRNdRKEJypK6ck7/OGsmaMXvhrXFk4ZY4evgomwgyDMZ1tGj41FbeIB55bBBHTuJEeNvJIi72dozWrIxxdMN+mAtHT7aG8brXNOM9P92I8+i6Ox3GPLrhlnaaWBTp1puep+2zBdhj52hpZSVW9I6nXnWgXBOwPhOzFu95zu39Urzt3b8YF116uXXQzPjs9Zf4L9z+NPV0nI2gpqw/LCPD67CTqDSUHKYyVyghy5GzJcEpWbUimSdbk64CU6X/CgU5juNZ/GtMQ7WjsnnHNbHh4p+KZw7fz/ub6kp5BgiDioJacBsHH3ymGY89AR3PZBjzqO7TejQL5sEP7+RoEqUfu1BZhwiebA/j6ksjfvT1TdahRB7PDvUolz/VJesJPD0UNqAb1qsMenmog1N1J0YToxa3bvonD8Qrbv3JeNOPv4PG0La8Hk6kH7qejf4y7gu1P0sTGR6D2OIQEjV9ZWl7JwWUAX1wlcACUFE6TJEBppwthYyv+oqOBFS94EEVkI6Cfwb/MVAjLrrmx2JucCWRucQdFN74WuLXR4gMjXGaYY5YFjz+xIjulnj2TBSSTFT02wV+xMPjKOz4sHVOA9Byhc4aHtdfWYv3vLMZ73pHxI6dK5RBE6dqjjoF4PQk770Q1f0e0kFPEdplnFxZ4J0YdqX+5j/4hdi260I7skGXn7Y4B/rLdraf7GNj2t5rsf8P/P1M+Vfi6pDfshGQkXNUgfz5FACb7tuujt03/Fzc9+mfj62bXxtHT9L1dTA3XZofrGJ2u+9QMx54fCWuv4pHK3HIBI9Hevzj5GdhmQRpcuS3tOGhny9gHorjIs7fzqv0W9tx3eURTx/ox6GjI6KQsXgp3EC6XqbokU2mXDz1MD3FE/JPPxqv+qu/Ede9+hZPhrTWHe/DunGmDm600omsFK3Gw7XoLxThVBFazOLiPMlwaT87vAQHG1+KICELTBHKxQVj6IRXnT+GSljBAe8Jh6gLhrIzaIqg4VRXcK1Rwp8BK8zCPyO+Hjfc+m6eOngg9v7R7+KIW70z1GSLb8TEqM71+Fwj7vx6I87fOYyds1qqsAPEV9GosU+Plug39LT0UdRp/CwDOTtLzIyB3c79zx2zPPnO0kP3S7tEaId0f9DKZYvTvGrfnYuFq66JG9/0FnSVPaWQ55DOnUv9RT27sfSP9Hk++3vKIvu5G5S1Qcm8ksqLjEoE42wpLnDUGUutz7hcE3wsjyGh5S5dwCIDkPGULnm1xDF/0SUyWq2tcevb/kW88R3vjtbcnbHQYf9WYyOR16ML5FGh+NbT9bj3wREPSvOWNM8IqU6zUjsHx3TZGtT2YF/O0vagNgjEipNg5HR1p/Kzdg9azT7dOndecPKmTU2ine09eoMhPzK165oPsLHOupIBWt2wZLfU51p/E7VA8Fib/fWk8dg5p61bylSAgR1IMi6C56mkbREZwDWQqpimirncoI6so1dgwPrCWWiCyTajTKFflbk7HcTUhotw6L9iQlOLT/7ex3i59jUxM51LCUYr493+Zf2ezyheeZWWHsxc2/qFEmC0htSaH4dprPTslVcRmvRJkpLNJK45E3Wjq2bAjK16W3BIl1vn1fnl+c/Glqs/GnuufbuXT0MiPbVNnTife/2t29rtj0oyqBRKW0pEd5UyqCTklL6SqpRVsPZA4gnZkx05ykiVosoXyoZJZqKcdBJuTJPqZ/PX7w7oIa7W5EXx5nd+KJq8m/L+t/9abL92V2zbwfuSOEmvbrLsi8/coUclR3Hlnnps28JEZia3zjVx6RKBdfohbT5MTxKdyICvKCNNNDK0UiJZ1QDIrOgHqHjNcLkdc8c/G+1d/yx2Xo4jJaEeMLJe33/9Ybhm+/MWmDsXt6qMkETG3DaslJN/ctarXPEKzrabXKlyEiiYXalrCn46zkKNUTORxhMB0VcjUoI/keIjKipICNaAdGuj3mJ84Y7Pxsd+96Nx6MlH6AInmKBMeI+0w2b6ppluvOVHGrwXwlh4Xjsm2BzoqMs1Jc1Wa0Q1P0GDQ9xNFpn8+3r4SC8j6faaHqDWhsTxo1+J9gXvi8tv+UVek7+AqOSZXEJ23ACLzN8f/dMCZqFAKfawob6L/RmmMpYMamjHRiImrSRR6tLIVKTFXSerZwRSbJzTjD0OqtD4Y+wiGA5LBPIAPA9/9xh0vSPWe/fec3f82i+9j9//accSLxStnDoSG8/bAY1mbJsdxs03tuOaK+pMbIhEtvMUbJJTd1K0tPCD09rQ4BBdNWlvwTIp0tbdwuIgjvKQ8+wV741XveG9NJjtHsNBhAyEXgT9pcDYgt+F/4v0fqZsgWAWyN63UZ1SmYTmorz9y9mgGP/uOz8XX/jM/40nH30wnn7s67H/noOx+7Uvj+2XXBtPf3sv3e4yWFPc04x4+cW1uOnqRuzazv80aQ/8UJj2aeVQhkT4i4+2AVk/dpjB8tTfAuvIRdJHjpyImW0/Hj/zj/4dzyTRIhh7TVTSIVzVb6Rg6pG0nYejEdTh4QacUD5bL5DLsW79wcs5yPfmz7BRMZSA2VTl/zwkJBC2L2knClHSGVSCFoBwMyVcG9+JdEmliwUqUZI1z89fUZNvgnXigXu+HHsfvDu2XXhpXH7934mbf/31sfvCi+JbjzwYH//oR+LhB/48ukcfi/5CxKfvirgUGa65OeK6Ky9nrcpvH2waxMxUk2eE+MFTJkldXnMfalOgp1tqR3lK/Xre69weX/n0H8Q733cjE6YZulbGVN07fZH0X6v9HZl2SvFfukNmxoCllalb0Rhhn1HmVuV66VecARGD2PEJo4LsxRNZZ6iejkh7PBuMaVP7XPxFq9vhlT49D8vEpclU9Kt3fTHuv+dr8eiD98Whx+6JS697Tbz9Z/8ev+Pzsnjs0Yfi1MmTcc/dd8dn//cn2LJbZtdmhzcTJpsD3gl9NKZxXot3MheO3RfbXvbm+Me/8uG47Q8/Eb/8vg/EbV+8I15z6+s9exW/F1v/5+PPLF7mQ1DbW6k0eWXWNL6snN6WI/MAr2oABbcQATajtYKseKSfOfOXDUWOXDt/3QGZnJzxtwjB87PzcfTgU/HKv3RL3PQPPxAvu+KqmNnALRKOC/ZcHIcP7Iv7vvL5OPnwvnjvv/1gvPLVN8XvfPjfxL23/Vm897c+HK9705vigz//9+Oxu5bi33/wF3gz7OI4fuhAvO0dr4sr2CDQoeGAPx8vpv4S4Dn586Iot+h4Lo2vLr6qzB/l+erkv4St6lzlCpUXOCMkXKmiTsilrAITVZXpM653YZb5rHxBEAk+bAZwt4n7JuBwl0OV33Hwg4fA8cAkcP/9P31kdAP++J8f+53RMwf3+cp+wOjXf+WfjjrLC6Mjh/eP3vXGq0afue0PoSP6vdEX7vjU6L5vfMV0WfqYLydfxzIbWiCqkA4lrbwgVZBVJV3KKjBBCW8Mq3oXZpnPJpUnk0saiWXypS5xxxOgKlLOiFBCC2gHXLaIMzrB0mIz/nJ/0iGqpkwbSrzsGhLGZVWdWhmf0uDHkbpe/rrdpc0A1DEtpUVZcuuW1BOPPeYfbbr2hlf5VtZHf/ND0WAj/af+1ntiy3nbWX50uDNzIHZdcAEbCbyBDR09e6vDuisByZeq/lWkuvdQa7BJZQRZVv1J/kkNHzJPZXSsDkjl1OxOKyATBt+dtWiMuyfglJZVRGgMU2BVeFb8E//Z/P0/M8WTQ07SokI/dNie4KdmJvi/JsxQq58dFYwbAODYRDlEqiaEKbZgXpr6Sy7+FLIWUvawsFKqEpp02oK6AuY66gu8Z6eKAjsD54howTeQm4ocefrIXOJkszhNT4Dnkr/U0+0yvVg7XtMiH50UM1TWrFxpz3acnO2GVuSXHj9M+vOvPGS6NOl4Fwbb5sREulXRJ3dISw7rXKJN9VVVejFhKljlKgDDGbmQcqwKwNDfL/5jHWCN7+ww3UGxzySfyu1QdKlUdO/xw6U/z38jvaLKBq0i6LRSVtj1ghBYOkB4wsojLeCWPC4vtTIKSWGlwRLWZVjOuR8gf4KRA1kkJ8yL5CrKMiv0w6l//pOa0irVLB1EVrE4rTJ4ekQ6ozUmwAHuoSufKZ/FAkgjUeBxrMobRuazd8sFWMHJoVzXxV8My1FFtcj8/8o/Nw2K+mlQMmnX0tXi1GL/NB1n/mwzwdFtVZOb9IdavQ6eurFlx8TASdwxfaAU36Il938Hf5VCo4p40TXf6mpEqJYQq/hTDWBKsUoZcJ+bv9CqBiqpTE9X05OMAki6VZla3wvmD5FqT1t0Pd8qQSM2kreyj4R4Pv7/D8kjABS1XAyvAAAAAElFTkSuQmCC";
+
+        // 40 家完整精確清洗店家資料庫
+        const RAW_STORES = [
+        {
+                "name": "漁你有緣餐廳",
+                "category": "餐飲",
+                "address": "桃園市桃園區大林路10號",
+                "phone": "03-3641999",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "住戶可享 95 折優惠（不含酒水）",
+                "expiry": "無期限",
+                "status": "closed",
+                "statusNote": "商工稅籍已於 2025/07 辦理歇業",
+                "lat": 24.988381,
+                "lng": 121.316135
+        },
+        {
+                "name": "詮鈦牙醫診所 (桃園總院)",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區正光路368號",
+                "phone": "03-3466468",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "特約免掛號費；全口重建與隱形矯正享專屬諮詢優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.999712,
+                "lng": 121.295132
+        },
+        {
+                "name": "萊恩寵物美容住宿 Lion Pets",
+                "category": "其他",
+                "address": "桃園市桃園區民族路199-2號",
+                "phone": "03-3608693",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "除店內原有促銷活動外，住戶再享 95 折優惠",
+                "expiry": "2024/09/20 至 2025/09/20",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.994489,
+                "lng": 121.307566
+        },
+        {
+                "name": "達美樂披薩 (桃園永安店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區永安路280號",
+                "phone": "03-3320809",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "外帶特約專屬買大送大，出示住戶證明再招待點心",
+                "expiry": "2024/05/15 至 2025/05/14",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.998614,
+                "lng": 121.303708
+        },
+        {
+                "name": "永安中醫診所",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區永安路300號",
+                "phone": "03-3366988",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "掛號費優免 50 元",
+                "expiry": "2024/07/01 至 2025/06/30",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.998805,
+                "lng": 121.303348
+        },
+        {
+                "name": "有家牙醫診所",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區公園路92號1樓",
+                "phone": "03-3637380",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "掛號就診出示住戶證明享掛號費減免",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.967129,
+                "lng": 121.298089
+        },
+        {
+                "name": "樂沃矯正牙醫診所 (原 樂沛矯正中心)",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區公園路92號",
+                "phone": "03-3637380",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "掛號費減免 50 元；每年一次自費療程減免上限 2,000 元",
+                "expiry": "2024/11/01 至 2025/10/31",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.967129,
+                "lng": 121.298089
+        },
+        {
+                "name": "鏡宅眼鏡 / 驗光所",
+                "category": "消費購物",
+                "address": "桃園市桃園區力行路385巷59號",
+                "phone": "03-3339388",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "配鏡享專屬特約折抵，提供非敝店眼鏡免費清潔調整與精準專業驗光",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.997078,
+                "lng": 121.297489
+        },
+        {
+                "name": "鮮茶道 (桃園廈門店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區廈門街130號",
+                "phone": "03-3362727",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "茶飲自取享 9 折優惠（不可與店家其他促銷合併）",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.994585,
+                "lng": 121.296293
+        },
+        {
+                "name": "身心放鬆專業視障按摩",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區中山路684號",
+                "phone": "03-3691221",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "全身按摩、肩頸放鬆享住戶特約 9 折優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.99126,
+                "lng": 121.294565
+        },
+        {
+                "name": "一修尼和牛炭火燒肉",
+                "category": "餐飲",
+                "address": "桃園市桃園區慈文路400號",
+                "phone": "03-3566600",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "內用單點肉品全單享 95 折優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.004079,
+                "lng": 121.298435
+        },
+        {
+                "name": "寒聚精緻鍋物 (正光店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區正光路325號",
+                "phone": "03-2170225",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "出示住戶證明享 95 折，再招待精選肉盤或海鮮乙份",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.998876,
+                "lng": 121.294846
+        },
+        {
+                "name": "悅翔牙醫診所 (中路旗艦院)",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區慈文路526號",
+                "phone": "03-3017777",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "住戶掛號就診享掛號費免收優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.001975,
+                "lng": 121.295378
+        },
+        {
+                "name": "森森燒肉 (桃園正光店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區正光路377號2樓",
+                "phone": "03-2171388",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "結帳出示智生活享套餐 95 折優惠，贈送主廚特選小品",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.000347,
+                "lng": 121.294618
+        },
+        {
+                "name": "元美診所 (抗老化/醫美中心)",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區力行路568號6樓",
+                "phone": "03-3780378",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "抗老化點滴、醫美療程享社區特約 9 折專屬優待",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.998545,
+                "lng": 121.293784
+        },
+        {
+                "name": "The BBQ House (桃園中路店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區力行路515號2樓",
+                "phone": "03-3693999",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "用餐享 95 折，招待主廚特製開胃小點；10人以上招待大宅酒窖紅酒或白酒乙瓶",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.998176,
+                "lng": 121.293436
+        },
+        {
+                "name": "王品餐飲 (桃園同德店 / 藝文特區)",
+                "category": "餐飲",
+                "address": "桃園市桃園區同德五街69號3樓",
+                "phone": "03-3561887",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "憑識別證內用消費套餐享 95 折，招待私房甜點",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.014377,
+                "lng": 121.300167
+        },
+        {
+                "name": "和牛涮日式鍋物放題 (桃園同德店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區同德五街77號1樓",
+                "phone": "03-3589981",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "王品集團頂級日式和牛吃到飽，出示證明享 95 折",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.014348,
+                "lng": 121.299966
+        },
+        {
+                "name": "閣坊窗簾 (訂製/電動窗簾)",
+                "category": "居家生活",
+                "address": "桃園市桃園區春日路1270號",
+                "phone": "03-3460666",
+                "discountPercent": 85,
+                "discountBadge": "85折",
+                "discountDetail": "免費到府丈量，全室窗簾/電動軌道享特約 85 折優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.024728,
+                "lng": 121.306627
+        },
+        {
+                "name": "藥倪教育 (全腦開發思維教室)",
+                "category": "教育",
+                "address": "桃園市桃園區文中一路30號",
+                "phone": "03-2172868",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "首次報名課程加贈兩堂免費課程，續報下一學期課程加贈一堂免費課程",
+                "expiry": "2024/09/01 至 2025/08/31",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.996595,
+                "lng": 121.293566
+        },
+        {
+                "name": "桃園市私立國際長頸鹿幼兒園",
+                "category": "教育",
+                "address": "桃園市桃園區宏昌八街71號",
+                "phone": "03-3703123",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "準公共化幼兒園免註冊費；凡報名享有專屬住戶教材加碼贈送",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.985481,
+                "lng": 121.289258
+        },
+        {
+                "name": "正光中醫診所",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區正光路505號",
+                "phone": "03-3413998",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "掛號費減免 50 元，提供養生茶飲及三伏貼特惠",
+                "expiry": "2024/06/01 至 2025/05/31",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 25.002574,
+                "lng": 121.293661
+        },
+        {
+                "name": "傅老師全齡手刀筋膜放鬆團隊 (桃園延壽店)",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區延壽街165號2樓",
+                "phone": "0925-128996",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "ISO 國際專業職能認證，科學筋膜刀調理項目享 9 折優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.994294,
+                "lng": 121.289151
+        },
+        {
+                "name": "向陽診所",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區力行路707號",
+                "phone": "03-3600177",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "掛號費減免 50 元（不可與其他減免合併）",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.998248,
+                "lng": 121.28961
+        },
+        {
+                "name": "沐上澄牙醫診所",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區文中二路123號",
+                "phone": "03-3607168",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "中路特區新銳牙醫，掛號費全面優免",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.999018,
+                "lng": 121.289639
+        },
+        {
+                "name": "德祐汽車專業維修保養廠",
+                "category": "保養維修",
+                "address": "桃園市桃園區正光二街235號",
+                "phone": "03-3602896",
+                "discountPercent": 85,
+                "discountBadge": "85折",
+                "discountDetail": "第一次至店家保養享 85 折，往後再次光臨保養均享 9 折（不含自備料）",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.999809,
+                "lng": 121.290087
+        },
+        {
+                "name": "PSpace 器械皮拉提斯體態雕塑",
+                "category": "娛樂",
+                "address": "桃園市桃園區文中二路77巷1號",
+                "phone": "03-2609297",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "1vs1教練課買9堂送1堂、買18堂送2堂，購買18堂者免收體驗費",
+                "expiry": "2024/10/31 至 2025/10/30",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.997621,
+                "lng": 121.289603
+        },
+        {
+                "name": "駿輝車業行",
+                "category": "保養維修",
+                "address": "桃園市桃園區文中路180號",
+                "phone": "03-3701618",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "機油更換10次送2次；零件耗材9折；10公里內道路救援入店維修免費",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.996125,
+                "lng": 121.288762
+        },
+        {
+                "name": "桃園市私立福祿貝爾國際幼兒園",
+                "category": "教育",
+                "address": "桃園市桃園區文中三路100號",
+                "phone": "03-3603268",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "社區住戶之子女入學，享有每學期免收書籍費福利",
+                "expiry": "2024/08/01 至 2025/07/31",
+                "status": "expired",
+                "statusNote": "特約合約已到期",
+                "lat": 24.998253,
+                "lng": 121.288974
+        },
+        {
+                "name": "捷凡手機現場維修 (文中店)",
+                "category": "保養維修",
+                "address": "桃園市桃園區文中三路73號",
+                "phone": "0989-917668",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "免費手機/平板檢測；更換螢幕或電池享專屬折價 200 元",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.997254,
+                "lng": 121.288546
+        },
+        {
+                "name": "樸樂食堂 (中路文中店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區文中三路86號",
+                "phone": "03-3602362",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "任意品項享 9 折優惠",
+                "expiry": "2023/01/01 至 2026/01/15",
+                "status": "closed",
+                "statusNote": "經查該店已於 2023/10 停止營業",
+                "lat": 24.997532,
+                "lng": 121.288784
+        },
+        {
+                "name": "耀武羊威 (桃園國際店)",
+                "category": "餐飲",
+                "address": "桃園市桃園區國際路二段370號",
+                "phone": "03-2171117",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "羊肉爐吃到飽！出示住戶證明全桌享 95 折優惠",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.997414,
+                "lng": 121.288082
+        },
+        {
+                "name": "桃園秉坤婦幼醫院",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區慈文路959號",
+                "phone": "03-3709191",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "門診就醫掛號費優免 20 元",
+                "expiry": "2026/01/01 至 2026/12/31",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.00043,
+                "lng": 121.289203
+        },
+        {
+                "name": "木偲傢居 (系統櫃/沙發家具)",
+                "category": "居家生活",
+                "address": "桃園市桃園區國際路二段207巷55號",
+                "phone": "03-3708163",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "沙發、床墊工廠直營，住戶享專屬特約折扣與免費配置規劃",
+                "expiry": "2026/05/01 至 2027/04/30",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.994865,
+                "lng": 121.286759
+        },
+        {
+                "name": "全國電子 Digital City (桃園國際店)",
+                "category": "消費購物",
+                "address": "桃園市桃園區國際路二段476號",
+                "phone": "03-3693185",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "冰箱電視洗衣機 95 折、小家電 9 折、生活百貨加購 85 折",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.000314,
+                "lng": 121.287867
+        },
+        {
+                "name": "亞仕田建築玻璃隔熱膜工程",
+                "category": "居家生活",
+                "address": "桃園市桃園區國豐五街17號3樓",
+                "phone": "0934-325353",
+                "discountPercent": 85,
+                "discountBadge": "85折",
+                "discountDetail": "住戶享居家防曬防爆隔熱膜施工總款 85 折優惠",
+                "expiry": "2026/09/17 至 2027/09/16",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.988775,
+                "lng": 121.278799
+        },
+        {
+                "name": "R7 CAR WASH 汽車美容 (文中店)",
+                "category": "保養維修",
+                "address": "桃園市桃園區文中路628號",
+                "phone": "0979-185588",
+                "discountPercent": 90,
+                "discountBadge": "9折",
+                "discountDetail": "打蠟類享定價 9 折；購買鍍膜美容套餐贈送一年會員及車漆維護 2 次",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.993967,
+                "lng": 121.278511
+        },
+        {
+                "name": "TIMI婷咪 無痛泌乳・芳香按摩",
+                "category": "醫療照顧",
+                "address": "桃園市桃園區錦明街39號5樓",
+                "phone": "0925-203132",
+                "discountPercent": 0,
+                "discountBadge": "其他",
+                "discountDetail": "產後無痛泌乳折價 500 元，到府免車馬費，預約再送按摩精油",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 25.050185,
+                "lng": 121.289279
+        },
+        {
+                "name": "麵粉酵母鹽與水 (手作歐式麵包)",
+                "category": "餐飲",
+                "address": "桃園市桃園區正光一街101號",
+                "phone": "0958-434583",
+                "discountPercent": 95,
+                "discountBadge": "95折",
+                "discountDetail": "全品項 95 折，不定期推出獨家限定款商品組合優惠價",
+                "expiry": "無期限",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.999049,
+                "lng": 121.293225
+        },
+        {
+                "name": "名匠汽車專業美研 (正光旗艦店)",
+                "category": "保養維修",
+                "address": "桃園市桃園區正光路327號",
+                "phone": "03-6210931",
+                "discountPercent": 88,
+                "discountBadge": "88折",
+                "discountDetail": "享四重限時特惠！CAFE!N 跨界精品洗車、鍍膜及輪胎快保享社區 88 折",
+                "expiry": "2026/06/01 至 2027/12/31",
+                "status": "active",
+                "statusNote": "合約有效中",
+                "lat": 24.999072,
+                "lng": 121.294812
+        }
+];
+
+        // 分類圖示與主題色
+        const CATEGORY_META = {
+            "餐飲": { icon: "🍔", color: "#f97316" },
+            "醫療照顧": { icon: "💊", color: "#06b6d4" },
+            "居家生活": { icon: "🏡", color: "#10b981" },
+            "保養維修": { icon: "🔧", color: "#eab308" },
+            "消費購物": { icon: "🛍️", color: "#8b5cf6" },
+            "教育": { icon: "🎓", color: "#3b82f6" },
+            "娛樂": { icon: "🎮", color: "#ec4899" },
+            "其他": { icon: "📦", color: "#64748b" }
+        };
+
+        // ⭐ 50% 碰撞距離分離 (Spidered Coordinates)：重疊或極近點向外錯開半個圖示距離
+        const STORES = (() => {
+            const groups = {};
+            RAW_STORES.forEach(s => {
+                const key = `${s.lat.toFixed(4)},${s.lng.toFixed(4)}`;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(s);
+            });
+
+            const processed = [];
+            Object.values(groups).forEach(group => {
+                if (group.length === 1) {
+                    processed.push(group[0]);
+                } else {
+                    const offsetDistance = 0.00018; 
+                    group.forEach((s, idx) => {
+                        const angle = (2 * Math.PI / group.length) * idx;
+                        const copy = { ...s };
+                        copy.lat = s.lat + offsetDistance * Math.cos(angle);
+                        copy.lng = s.lng + offsetDistance * Math.sin(angle) * 1.1;
+                        copy.isDisplaced = true;
+                        processed.push(copy);
+                    });
+                }
+            });
+            return processed;
+        })();
+
+        let map;
+        let markers = [];
+        let homeMarker;
+        let currentCategory = '全部';
+        let currentDiscount = 'all';
+
+        const floatingCard = document.getElementById('floatingCard');
+        const mapContainer = document.getElementById('mapContainer');
+
+        function initMap() {
+            map = new google.maps.Map(document.getElementById('map'), {
+                center: COMMUNITY_COORDS,
+                zoom: 15,
+                mapTypeControl: false,
+                streetViewControl: false,
+                fullscreenControl: false,
+                styles: [
+                    { "elementType": "geometry", "stylers": [{ "color": "#1d2c4d" }] },
+                    { "elementType": "labels.text.fill", "stylers": [{ "color": "#8ec3b9" }] },
+                    { "elementType": "labels.text.stroke", "stylers": [{ "color": "#1a3646" }] },
+                    { "featureType": "poi", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+                    { "featureType": "transit.station", "elementType": "all", "stylers": [{ "visibility": "off" }] },
+                    { "featureType": "administrative.country", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+                    { "featureType": "administrative.land_parcel", "elementType": "labels.text.fill", "stylers": [{ "color": "#64779e" }] },
+                    { "featureType": "administrative.province", "elementType": "geometry.stroke", "stylers": [{ "color": "#4b6878" }] },
+                    { "featureType": "landscape.man_made", "elementType": "geometry.stroke", "stylers": [{ "color": "#334e87" }] },
+                    { "featureType": "landscape.natural", "elementType": "geometry", "stylers": [{ "color": "#023e58" }] },
+                    { "featureType": "road", "elementType": "geometry", "stylers": [{ "color": "#304a7d" }] },
+                    { "featureType": "road", "elementType": "labels.text.fill", "stylers": [{ "color": "#98a5be" }] },
+                    { "featureType": "road", "elementType": "labels.text.stroke", "stylers": [{ "color": "#1d2c4d" }] },
+                    { "featureType": "road.highway", "elementType": "geometry", "stylers": [{ "color": "#2c6675" }] },
+                    { "featureType": "road.highway", "elementType": "geometry.stroke", "stylers": [{ "color": "#255763" }] },
+                    { "featureType": "road.highway", "elementType": "labels.text.fill", "stylers": [{ "color": "#b0d5ce" }] },
+                    { "featureType": "road.highway", "elementType": "labels.text.stroke", "stylers": [{ "color": "#023e58" }] },
+                    { "featureType": "transit.line", "elementType": "geometry.fill", "stylers": [{ "color": "#283d6a" }] },
+                    { "featureType": "water", "elementType": "geometry", "stylers": [{ "color": "#0e1626" }] },
+                    { "featureType": "water", "elementType": "labels.text.fill", "stylers": [{ "color": "#4e6d70" }] }
+                ]
+            });
+
+            // ⭐ 唯樂蜜蜂社區地標 (置頂 zIndex: 99999，絕不被覆蓋)
+            homeMarker = new google.maps.Marker({
+                position: COMMUNITY_COORDS,
+                map: map,
+                title: "唯樂之丘 (我們社區)",
+                zIndex: 99999,
+                icon: {
+                    url: BEE_ICON_URL,
+                    scaledSize: new google.maps.Size(46, 32),
+                    anchor: new google.maps.Point(23, 16)
+                }
+            });
+
+            homeMarker.addListener('mouseover', (e) => {
+                showFloatingCard(`
+                    <div>
+                        <div style="font-weight: 800; color: #fcd34d; font-size: 14px; display: flex; align-items: center; gap: 6px;">
+                            <span>🐝</span> 唯樂之丘 (我們社區)
+                        </div>
+                        <div style="font-size: 12px; color: #94a3b8; margin-top: 4px;">桃園市桃園區文中三路18號</div>
+                        <div style="font-size: 11px; color: #38bdf8; margin-top: 2px;">中路重劃區生活圈中心</div>
+                    </div>
+                `, e);
+            });
+
+            homeMarker.addListener('mouseout', hideFloatingCard);
+
+            // 渲染所有店家
+            renderStores();
+        }
+
+        // 零位移浮動卡定位邏輯 (智慧判斷上下左右邊界，純浮動顯示，完全不移地圖)
+        function showFloatingCard(html, mouseEvent) {
+            floatingCard.innerHTML = html;
+            floatingCard.style.display = 'block';
+
+            const cardWidth = 290;
+            const cardHeight = floatingCard.offsetHeight || 160;
+            const containerRect = mapContainer.getBoundingClientRect();
+
+            let x = mouseEvent.domEvent.clientX - containerRect.left;
+            let y = mouseEvent.domEvent.clientY - containerRect.top;
+
+            let left = x + 18;
+            let top = y - cardHeight - 12;
+
+            if (top < 15) {
+                top = y + 20;
+            }
+
+            if (left + cardWidth > containerRect.width - 15) {
+                left = x - cardWidth - 18;
+            }
+
+            if (left < 15) left = 15;
+
+            floatingCard.style.left = `${left}px`;
+            floatingCard.style.top = `${top}px`;
+            floatingCard.style.opacity = '1';
+        }
+
+        function hideFloatingCard() {
+            floatingCard.style.opacity = '0';
+            floatingCard.style.display = 'none';
+        }
+
+        function checkStoreDiscount(store, discKey) {
+            if (discKey !== 'all' && store.status !== 'active') return false;
+
+            if (discKey === 'all') return true;
+            if (discKey === '95') return (store.discountPercent > 0 && store.discountPercent <= 95) || store.discountPercent === 0;
+            if (discKey === '90') return (store.discountPercent > 0 && store.discountPercent <= 90);
+            if (discKey === '88') return store.discountPercent === 88;
+            if (discKey === '85') return (store.discountPercent > 0 && store.discountPercent <= 85);
+            if (discKey === 'other') return store.discountPercent === 0;
+            return false;
+        }
+
+        function updateDynamicCounters() {
+            const storesInCurrentCat = STORES.filter(s => currentCategory === '全部' || s.category === currentCategory);
+            
+            document.getElementById('badge-all').innerText = storesInCurrentCat.length;
+            document.getElementById('badge-95').innerText = storesInCurrentCat.filter(s => checkStoreDiscount(s, '95')).length;
+            document.getElementById('badge-90').innerText = storesInCurrentCat.filter(s => checkStoreDiscount(s, '90')).length;
+            document.getElementById('badge-88').innerText = storesInCurrentCat.filter(s => checkStoreDiscount(s, '88')).length;
+            document.getElementById('badge-85').innerText = storesInCurrentCat.filter(s => checkStoreDiscount(s, '85')).length;
+            document.getElementById('badge-other').innerText = storesInCurrentCat.filter(s => checkStoreDiscount(s, 'other')).length;
+
+            const storesInCurrentDisc = STORES.filter(s => checkStoreDiscount(s, currentDiscount));
+
+            const container = document.getElementById('categoryContainer');
+            container.innerHTML = '';
+
+            const allCatBtn = document.createElement('button');
+            allCatBtn.id = 'cat-btn-all';
+            allCatBtn.className = (currentCategory === '全部')
+                ? 'w-full py-2 px-3 rounded-lg text-xs font-bold text-left transition bg-sky-500 text-slate-950 shadow-md flex items-center justify-between'
+                : 'w-full py-1.5 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 flex items-center justify-between';
+            allCatBtn.onclick = () => setCategoryFilter('全部');
+            allCatBtn.innerHTML = `<span>✨ 全部分類</span><span class="text-[10px] font-bold opacity-80">${storesInCurrentDisc.length}</span>`;
+            container.appendChild(allCatBtn);
+
+            Object.keys(CATEGORY_META).forEach(cat => {
+                const matchingStores = storesInCurrentDisc.filter(s => s.category === cat);
+                const count = matchingStores.length;
+                if (count > 0 || currentCategory === cat) {
+                    const meta = CATEGORY_META[cat];
+                    const isSelected = (currentCategory === cat);
+                    const btn = document.createElement('button');
+                    btn.id = `cat-btn-${cat}`;
+                    btn.className = isSelected
+                        ? 'cat-btn w-full py-2 px-3 rounded-lg text-xs font-bold text-left transition bg-sky-500 text-slate-950 shadow-md flex items-center justify-between'
+                        : 'cat-btn w-full py-1.5 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700/80 flex items-center justify-between';
+                    btn.onclick = () => setCategoryFilter(cat);
+                    btn.innerHTML = `<span>${meta.icon} ${cat}</span><span class="text-[10px] text-slate-400 font-bold">${count}</span>`;
+                    container.appendChild(btn);
+                }
+            });
+        }
+
+        function getStoreIcon(store) {
+            const isInactive = store.status !== 'active';
+            const meta = CATEGORY_META[store.category] || { icon: "📍", color: "#64748b" };
+            const bgColor = isInactive ? "#64748b" : meta.color;
+            const opacity = isInactive ? "0.6" : "1";
+            const strokeColor = store.isDisplaced ? "#fef08a" : "#ffffff";
+            const strokeWidth = store.isDisplaced ? "2.5" : "2";
+
+            const svg = `
+                <svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34" opacity="${opacity}">
+                    <rect x="2" y="2" width="30" height="30" rx="10" fill="${bgColor}" stroke="${strokeColor}" stroke-width="${strokeWidth}" filter="drop-shadow(0px 3px 5px rgba(0,0,0,0.5))"/>
+                    <text x="17" y="23" font-size="16" text-anchor="middle">${meta.icon}</text>
+                </svg>
+            `;
+            return {
+                url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(svg),
+                scaledSize: new google.maps.Size(34, 34),
+                anchor: new google.maps.Point(17, 17)
+            };
+        }
+
+        function generateInfoContent(store) {
+            const isInactive = store.status !== 'active';
+            const badgeColor = isInactive ? "background:#334155; color:#cbd5e1; border: 1px solid #475569;" : "background:rgba(245, 158, 11, 0.2); color:#fcd34d; border: 1px solid rgba(245, 158, 11, 0.4);";
+            const statusNotice = isInactive ? `
+                <div style="background: rgba(136, 19, 55, 0.5); border: 1px solid rgba(244, 63, 94, 0.4); color: #fda4af; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; margin-bottom: 8px;">
+                    ⚠️ ${store.statusNote}
+                </div>
+            ` : '';
+
+            const collisionNotice = store.isDisplaced ? `
+                <div style="color: #fde047; font-size: 10px; margin-bottom: 4px;">
+                    📍 同址多店家 (已微幅錯開方便點選)
+                </div>
+            ` : '';
+
+            return `
+                <div style="font-family: inherit; color: #f8fafc; font-size: 13px; line-height: 1.45;">
+                    ${statusNotice}
+                    ${collisionNotice}
+                    <div style="display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 1px solid rgba(71, 85, 105, 0.7); padding-bottom: 6px; margin-bottom: 8px; gap: 6px;">
+                        <span style="font-weight: 700; font-size: 14px; ${isInactive ? 'text-decoration: line-through; color: #94a3b8;' : 'color: #fcd34d;'}">${store.name}</span>
+                        <span style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 4px; white-space: nowrap; flex-shrink: 0; ${badgeColor}">
+                            ${store.discountBadge}
+                        </span>
+                    </div>
+                    <div style="color: #e2e8f0; font-size: 12px; margin-bottom: 8px; line-height: 1.5;">
+                        ${store.discountDetail}
+                    </div>
+                    <div style="font-size: 11px; color: #94a3b8; border-top: 1px dashed rgba(71, 85, 105, 0.5); padding-top: 6px; margin-top: 6px; display: flex; flex-direction: column; gap: 3px;">
+                        <div>📍 ${store.address}</div>
+                        <div>📞 ${store.phone || '無電話紀錄'}</div>
+                        <div style="color: #38bdf8;">⏳ 期限：${store.expiry}</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderStores() {
+            markers.forEach(m => m.setMap(null));
+            markers = [];
+
+            const filtered = STORES.filter(store => {
+                const matchCat = (currentCategory === '全部' || store.category === currentCategory);
+                const matchDisc = checkStoreDiscount(store, currentDiscount);
+                return matchCat && matchDisc;
+            });
+
+            document.getElementById('storeCountBadge').innerText = `已顯示 ${filtered.length} / 40 家特約`;
+            updateDynamicCounters();
+
+            const bounds = new google.maps.LatLngBounds();
+            bounds.extend(COMMUNITY_COORDS);
+
+            filtered.forEach(store => {
+                const pos = { lat: store.lat, lng: store.lng };
+                bounds.extend(pos);
+
+                const marker = new google.maps.Marker({
+                    position: pos,
+                    map: map,
+                    title: store.name,
+                    icon: getStoreIcon(store)
+                });
+
+                marker.addListener('mouseover', (e) => {
+                    showFloatingCard(generateInfoContent(store), e);
+                });
+
+                marker.addListener('mouseout', hideFloatingCard);
+
+                markers.push(marker);
+            });
+
+            if (filtered.length > 0) {
+                const padding = {
+                    top: 25,
+                    bottom: 25,
+                    left: 25,
+                    right: 25
+                };
+                map.fitBounds(bounds, padding);
+
+                const listener = google.maps.event.addListener(map, "idle", function() {
+                    if (map.getZoom() > 16) map.setZoom(16);
+                    google.maps.event.removeListener(listener);
+                });
+            } else {
+                map.setCenter(COMMUNITY_COORDS);
+                map.setZoom(15);
+            }
+        }
+
+        function setCategoryFilter(cat) {
+            currentCategory = cat;
+            renderStores();
+        }
+
+        function setDiscountFilter(disc) {
+            currentDiscount = disc;
+            document.querySelectorAll('.disc-btn').forEach(btn => {
+                btn.className = 'disc-btn py-2 px-3 rounded-lg text-xs font-medium text-left transition bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/80 flex items-center justify-between';
+            });
+            const activeBtn = document.getElementById(`btn-disc-${disc}`);
+            if (activeBtn) {
+                activeBtn.className = 'disc-btn py-2 px-3 rounded-lg text-xs font-bold text-left transition bg-amber-500 text-slate-950 shadow-md flex items-center justify-between';
+            }
+            renderStores();
+        }
+
+        function resetMapView() {
+            map.panTo(COMMUNITY_COORDS);
+            map.setZoom(16);
+        }
+    </script>
+
+    <!-- 載入 Google Maps API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDgWTm3DxipzP6aQZW_R_gQsEYyVk4Ad1g&language=zh-TW&region=TW&callback=initMap" async defer></script>
+</body>
+</html>
